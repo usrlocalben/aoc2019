@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <deque>
 #include <iostream>
 #include <numeric>
 #include <optional>
@@ -129,36 +130,9 @@ auto operator<<(ostream& s, Batch b) -> ostream& {
 struct Recipe {
 	array<int, 64> in{};
 	int sku;
-	int qty; };
-
-using Inventory = array<int, 64>;
-
-namespace std {
-	template <>
-	struct hash<Inventory> {
-		auto operator()(const Inventory& a) const -> std::size_t {
-			auto ax = hash<int>()(0);
-			for (int i=0; i<64; ++i) {
-				ax ^= hash<int>()(a[i]); }
-			return ax; }};}
-
-/*
-auto CanAfford(const Recipe& r, const Inventory& inv) -> bool {
-	for (int i=0; i<64; ++i) {
-		if (r.in[i] > inv[i]) {
-			return false; }}
-	return true; }
-	*/
-
-auto MaybePurchase(const Recipe& r, Inventory inv) -> optional<Inventory> {
-	for (int i=0; i<64; ++i) {
-		if (r.in[i] > inv[i]) {
-			return nullopt; }
-		inv[i] -= r.in[i]; }
-	inv[r.sku] += r.qty;
-	return inv; }
-
-
+	int yield;
+	int64_t needed{0};
+	int indegree{0}; };
 
 auto operator<<(ostream& s, Recipe r) -> ostream& {
 	s << "<Recipe in=[";
@@ -169,36 +143,56 @@ auto operator<<(ostream& s, Recipe r) -> ostream& {
 			s << ", "; }
 		s << Batch{ r.in[i], i };
 		first = false; }
-	s << "], out=" << Batch{ r.qty, r.sku } << ">";
+	s << "], out=" << Batch{ r.yield, r.sku } << ">";
 	return s; }
 
 std::vector<Recipe> recipes;
-auto operator==(const Inventory& a, const Inventory& b) -> bool {
+
+uset<int> visited;
+void FillIndegree(int n, int d=0) {
+	if (d==0) {
+		visited.clear(); }
+	if (visited.find(n) != end(visited)) {
+		return; }
+	visited.insert(n);
+	auto& recipe = recipes[n];
 	for (int i=0; i<64; ++i) {
-		if (a[i] != b[i]) return false; }
-	return true; }
+		if (recipe.in[i] > 0) {
+			recipes[i].indegree++;
+			FillIndegree(i, d+1); }}}
 
-uset<Inventory> seen;
+class Bisector {
+	int64_t upper_;
+	int64_t lower_;
+	int64_t target_;
+public:
+	Bisector(int64_t u, int64_t t) :
+		lower_(0),
+		upper_(u),
+		target_(t) {}
 
-auto R(Inventory inv) -> bool {
-	if (inv[0] < 106) {
-		inv[0] = 0; }
-	if (inv[1] > 0) {
-		return true; }
-	if (seen.find(inv) != end(seen)) {
-		return false; }
-	for (const auto& r : recipes) {
-		if (auto ni = MaybePurchase(r, inv); ni) {
-			auto result = R(*ni);
-			if (result) {
-				return true; }}}
-	seen.insert(inv);
-	return false; }
+	auto Pos() const -> int64_t {
+		return (lower_ + upper_) / 2; }
+
+	auto Result(int64_t v) {
+		// cout << "[" << lower_ << ", " << upper_ << "] " << v << nl;
+		if (v < target_) {
+			lower_ = Pos(); }
+		else if (v > target_) {
+			upper_ = Pos(); }}
+
+	auto End() const -> bool {
+		return upper_-lower_ <= 1; } };
+
+
+
+
+
+
 
 int main() {
 	std::string tmp;
-	UpsertName("ORE"); // 0
-	UpsertName("FUEL"); // 1
+	std::vector<Recipe> rax;
 	while (getline(std::cin, tmp)) {
 		auto delim = string{" => "};
 		auto pos = tmp.find(delim);
@@ -221,18 +215,69 @@ int main() {
 
 		auto b = deserializeBatch(right);
 		r.sku = b.sku;
-		r.qty = b.qty;
-		cout << r << nl;
-		recipes.push_back(r); }
+		r.yield = b.qty;
+		// cout << r << nl;
+		rax.push_back(r); }
 
-	Inventory inv{};
-	inv[0] = 0;
-	while (true) {
-		cout << "." << flush;
-		inv[0]++;
-		if (R(inv)) {
-			cout << "made fuel with " << inv[0] << " ORE\n";
-			exit(0); }}
+	auto eax = Recipe{};
+	eax.sku = nameId["ORE"];
+	eax.yield = 1;
+	rax.push_back(eax);
+
+
+	recipes.resize(rax.size());
+	for (const auto& r : rax) {
+		recipes[r.sku] = r; }
+
+
+	const int SKU_FUEL = nameId["FUEL"];
+
+
+	/*for (const auto& r : recipes) {
+		cout << r.indegree << ": " << r << nl; }*/
+
+	std::deque<int> queue;
+	auto FuelCostInOre = [&](int64_t wanted) {
+		for (auto& r : recipes) {
+			r.indegree = 0;
+			r.needed = 0; }
+		FillIndegree(SKU_FUEL);
+		visited.clear();
+
+		recipes[SKU_FUEL].needed = wanted;
+		queue.push_back(SKU_FUEL);
+		while (!queue.empty()) {
+			const auto here = queue.front(); queue.pop_front();
+			if (visited.find(here) != end(visited)) continue;
+			auto& r = recipes[here];
+			if (--r.indegree > 0) continue;  // not ready yet
+			// cout << "visiting " << invNameId[here] << "\n";
+
+			int64_t numReactions = r.needed / r.yield;
+			if (r.needed % r.yield > 0) {
+				numReactions++; }
+			// cout << "need: " << r.needed << ", yield is " << r.yield << " -- reactions: " << numReactions << nl;
+
+			for (int i=0; i<64; ++i) {
+				if (r.in[i] == 0) continue;
+				recipes[i].needed += numReactions * r.in[i];
+				queue.push_back(i); }}
+		return recipes[nameId["ORE"]].needed; };
+
+	auto p1 = FuelCostInOre(1);
+	cout << "p1: " << p1 << nl;
+
+
+	Bisector bisector{ 10000000, 1000000000000 };
+	while (!bisector.End()) {
+		auto x = bisector.Pos();
+		auto ore = FuelCostInOre(x);
+		bisector.Result(ore); }
+
+	cout << "p2: " << bisector.Pos() << nl;
+
+	/*for (const auto& r : recipes) {
+		cout << r.indegree << " " << r.needed << " " << r << nl; }*/
 
 
 
