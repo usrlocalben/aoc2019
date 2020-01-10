@@ -267,38 +267,44 @@ int main() {
 		auto visited = uset<state, state_hash>{};
 		array<vector<cvec2>, 4> outBufs{};
 		while (!queue.empty()) {
-			auto& [state, dist] = queue.front();
-			cerr << "." << flush;
-			if (visited.find(state) == end(visited)) {
-				visited.insert(state);
-				// gather keys, if any
-				for (int i{0}; i<NB; ++i) {
-					state.keys |= deKey(cell(state.pos[i])); }
-				// check target
-				if (state.keys == allKeys) {
-					p2 = dist;
-					break; }
-				// movements
-				outLinks(state.pos[0], state.keys, outBufs[0]);
-				outLinks(state.pos[1], state.keys, outBufs[1]);
-				outLinks(state.pos[2], state.keys, outBufs[2]);
-				outLinks(state.pos[3], state.keys, outBufs[3]);
-				if (outBufs[0].empty()) { outBufs[0].push_back(state.pos[0]); }
-				if (outBufs[1].empty()) { outBufs[1].push_back(state.pos[1]); }
-				if (outBufs[2].empty()) { outBufs[2].push_back(state.pos[2]); }
-				if (outBufs[3].empty()) { outBufs[3].push_back(state.pos[3]); }
-				for (int xa=0; xa<outBufs[0].size(); xa++) {
-				for (int xb=0; xb<outBufs[1].size(); xb++) {
-				for (int xc=0; xc<outBufs[2].size(); xc++) {
-				for (int xd=0; xd<outBufs[3].size(); xd++) {
-					auto ns = state;
-					state.pos[0] = outBufs[0][xa];
-					state.pos[1] = outBufs[1][xb];
-					state.pos[2] = outBufs[2][xc];
-					state.pos[3] = outBufs[3][xd];
-					if (visited.find(ns) == end(visited)) {
-						queue.emplace_back(ns, dist+1); }}}}}}
-			queue.pop_front(); }}
+			auto [state, dist] = queue.front();  queue.pop_front();
+			if (visited.find(state) != end(visited)) continue;
+			visited.insert(state);
+			// cerr << "." << flush;
+			// gather keys, if any
+			for (int i{0}; i<NB; ++i) {
+				state.keys |= deKey(cell(state.pos[i])); }
+			// check target
+			if (state.keys == allKeys) {
+				p2 = dist;
+				break; }
+			// movements
+			for (int i{0}; i<NB; ++i) {
+				outLinks(state.pos[i], state.keys, outBufs[i]);
+				if (outBufs[i].empty()) { outBufs[i].push_back(state.pos[i]); }
+				/*cerr << "OL #" << i << " now: " << state.pos[i] << ", next [";
+				bool first{true};
+				for (const auto& item : outBufs[i]) {
+					if (first) {
+						first = false;}
+					else {
+						cerr << ", "; }
+					cerr << item; }
+				cerr << "]\n";*/
+				}
+			for (int xa=0; xa<outBufs[0].size(); xa++) {
+			for (int xb=0; xb<outBufs[1].size(); xb++) {
+			for (int xc=0; xc<outBufs[2].size(); xc++) {
+			for (int xd=0; xd<outBufs[3].size(); xd++) {
+				auto ns = state;
+				ns.pos[0] = outBufs[0][xa];
+				ns.pos[1] = outBufs[1][xb];
+				ns.pos[2] = outBufs[2][xc];
+				ns.pos[3] = outBufs[3][xd];
+				// cerr << "c" << flush;
+				if (visited.find(ns) == end(visited)) {
+					// cerr << "q" << flush;
+					queue.emplace_back(ns, dist+1); }}}}}}}
 
 	if (p2) {
 		cout << "p2: " << p2.value() << nl; }
