@@ -18,6 +18,11 @@ using namespace std;
 const std::string nl{"\n"};
 constexpr int oo{0x3f3f3f3f};
 
+struct pair_hash {
+	template <class T1, class T2>
+	size_t operator()(const pair<T1, T2>& p) const {
+		return std::hash<T1>()(p.first) ^ std::hash<T2>()(p.second); } };
+
 #pragma pack(1)
 template <typename T>
 struct vec2 {
@@ -66,7 +71,9 @@ namespace std {
 	template <>
 	struct hash<cvec2> {
 		auto operator()(const cvec2& a) const -> std::size_t {
-			return hash<int8_t>()(a.x) ^ hash<int8_t>()(a.y); }};}
+			auto h = hash<char>()(a.x);
+			auto n = hash<char>()(a.y);  n=(n<<6)|(n>>1);  h^=n;
+			return h; }};}
 
 auto LRUD(char ch) -> cvec2 {
 	switch (ch) {
@@ -94,39 +101,40 @@ array<cvec2, 4> NSWE = {{
 array<string, 4> NSWEname = {{ "N", "S", "W", "E" }};
 
 vector<char> map;
+int allKeys{0};
+cvec2 home;
+bool quadsAreOpen{true};
 
-auto deKey(char ch) -> int32_t {
+auto CharToKey(char ch) -> int32_t {
 	if ('a' <= ch && ch <= 'z') {
 		return 1L << (ch-'a'); }
 	return 0; }
 
-auto deDoor(char ch) -> int32_t {
+auto CharToDoor(char ch) -> int32_t {
 	if ('A' <= ch && ch <= 'Z') {
 		return 1L << (ch-'A'); }
 	return 0; }
 
-auto isWall(char ch) -> bool {
-	return ch == '#'; }
-
 auto cell(cvec2 coord) -> char {
 	auto ofs = static_cast<int>(coord.y)*256 + coord.x;
 	return map[ofs]; }
+
 auto cell(cvec2 coord, char ch) -> char {
 	auto ofs = static_cast<int>(coord.y)*256 + coord.x;
 	return map[ofs] = ch; }
 
-void outLinks(cvec2 coord, int keys, vector<cvec2>& buf) {
+void OutLinks(cvec2 coord, int keys, vector<cvec2>& buf) {
 	buf.clear();
 	for (int i=0; i<4; ++i) {
 		auto next = coord + NSWE[i];
 		char ch = cell(next);
 		if (ch == '#') continue;
-		if (auto dd = deDoor(ch); dd>0 && (dd&keys)==0) {
+		if (auto dd = CharToDoor(ch); dd>0 && (dd&keys)==0) {
 			// door, but no key
 			continue; }
 		buf.push_back(next); }}
 
-auto DeadEndProbe(cvec2 coord, cvec2 prev, int depth=0) -> bool {
+auto DeadEndProbe(cvec2 coord, cvec2 prev=cvec2{-1}, int depth=0) -> bool {
 	// cerr << "d:" << depth << nl;
 	array<cvec2, 4> links;
 	int linkCnt{0};
@@ -136,11 +144,11 @@ auto DeadEndProbe(cvec2 coord, cvec2 prev, int depth=0) -> bool {
 		if (cell(next) == '#') continue;
 		links[linkCnt++] = next; }
 
-	if (coord == cvec2{7,1}) {
+	/*if (coord == cvec2{7,1}) {
 		cerr << linkCnt << " ";
 		for (int i=0; i<linkCnt; ++i) {
 			cerr << links[i]; }
-		cerr << nl; }
+		cerr << nl; }*/
 
 	const auto ch = cell(coord);
 	if (linkCnt==0) {
@@ -162,10 +170,77 @@ auto DeadEndProbe(cvec2 coord, cvec2 prev, int depth=0) -> bool {
 		else {
 			return false; }}}
 
+struct Dest {
+	cvec2 coord;
+	int keys;
+	int dist; };
+
+auto Look(cvec2 coord, int keys) -> const vector<Dest>& {
+	static auto cache = umap<pair<cvec2, int>, vector<Dest>, pair_hash>{};
+	static auto queue = deque<pair<cvec2, int>>{};
+	static auto visited = uset<cvec2>{};
+	static auto tmp = vector<cvec2>{};
+
+	if (auto found = cache.find({ coord, keys }); found!=end(cache)) {
+		return found->second; }
+
+	auto& out = cache[{ coord, keys }];
+	assert(out.size() == 0);
+
+	visited.clear();
+	queue.clear();
+	queue.push_back({ coord, 0 });
+	while (!queue.empty()) {
+		auto [pos, dist] = queue.front(); queue.pop_front();
+		if (visited.find(pos) != end(visited)) continue;
+		visited.insert(pos);
+
+		const auto ch = cell(pos);
+		const auto kb = CharToKey(ch);
+		if (kb && (keys&kb)==0) {
+			out.push_back({ pos, keys|kb, dist }); }
+		else {
+			OutLinks(pos, keys, tmp);
+			for (auto np : tmp) {
+				if (visited.find(np) != end(visited)) continue;
+				queue.push_back({ np, dist+1 }); }}}
+
+	return out; }
+		
+int btBest=oo;
+auto BT(array<cvec2, 4> bots, int keys=0, int steps=0) -> int {
+	if (keys == allKeys) {
+		if (steps < btBest) {
+			btBest = steps; }
+		return steps; }
+	else {
+		if (steps > btBest) {
+			return oo; }}
+
+	int best{oo};
+	for (int bi=0; bi<4; ++bi) {
+		const auto& dests = Look(bots[bi], keys);
+		for (const auto& dest : dests) {
+			auto newBots = bots; newBots[bi] = dest.coord;
+			int rest = BT(newBots, dest.keys, steps+dest.dist);
+			best = std::min(best, rest); }}
+	return best; }
+
+void CloseQuads() {
+	assert(quadsAreOpen);
+	cell(home, '#');
+	for (int i=0; i<4; ++i) {
+		cell(home + NSWE[i], '#'); }
+	quadsAreOpen = false; }
+
+void OpenQuads() {
+	assert(!quadsAreOpen);
+	cell(home, '@');
+	for (int i=0; i<4; ++i) {
+		cell(home + NSWE[i], '.'); }
+	quadsAreOpen = true; }
 
 int main() {
-	cvec2 home;
-	int allKeys{0};
 	{int y{0};
 	std::string tmp;
 	map.clear();
@@ -181,23 +256,17 @@ int main() {
 			map[y*256+x] = ch; }
 		++y; }}
 
-	cell(home, '#');
-	for (int i=0; i<4; ++i) {
-		cell(home + NSWE[i], '#'); }
-	DeadEndProbe(home+NSWE[0]+NSWE[2], cvec2{-1,-1});
-	DeadEndProbe(home+NSWE[0]+NSWE[3], cvec2{-1,-1});
-	DeadEndProbe(home+NSWE[1]+NSWE[2], cvec2{-1,-1});
-	DeadEndProbe(home+NSWE[1]+NSWE[3], cvec2{-1,-1});
-	cell(home, '@');
-	for (int i=0; i<4; ++i) {
-		cell(home + NSWE[i], '.'); }
+	const auto botCoords = array<cvec2, 4>{ {
+		home + NSWE[0]+NSWE[2],
+		home + NSWE[0]+NSWE[3],
+		home + NSWE[1]+NSWE[2],
+		home + NSWE[1]+NSWE[3], } };
 
-
-	/*for (int y{0}; y<81; ++y) {
-		for (int x{0}; x<81; ++x) {
-			const auto coord = cvec2(x, y);
-			cout << cell(coord); }
-		cout << "\n"; }*/
+	// optimize a bit by filling in dead ends
+	CloseQuads();
+	for (int bi{0}; bi<4; ++bi) {
+		DeadEndProbe(botCoords[bi]); }
+	OpenQuads();
 
 	optional<int> p1{};
 	{
@@ -219,11 +288,11 @@ int main() {
 			auto& [state, dist] = queue.front();
 			if (visited.find(state) == end(visited)) {
 				visited.insert(state);
-				state.keys |= deKey(cell(state.pos));
+				state.keys |= CharToKey(cell(state.pos));
 				if (state.keys == allKeys) {
 					p1 = dist;
 					break; }
-				outLinks(state.pos, state.keys, outs);
+				OutLinks(state.pos, state.keys, outs);
 				for (const auto& link : outs) {
 					queue.push_back({ { link, state.keys }, dist+1 }); }}
 			queue.pop_front(); }}
@@ -233,82 +302,7 @@ int main() {
 		cerr << "p1 not found" << endl;
 		exit(1); }
 
-	cell(home, '#');
-	for (int i=0; i<4; ++i) {
-		cell(home + NSWE[i], '#'); }
-
-	optional<int> p2{};
-	{
-		constexpr int NB{4};
-		struct state {
-			array<cvec2, NB> pos;
-			int keys;
-			auto operator==(const state& rhs) const -> bool {
-				return    keys==rhs.keys
-				       && pos[0]==rhs.pos[0]
-				       && pos[1]==rhs.pos[1]
-				       && pos[2]==rhs.pos[2]
-				       && pos[3]==rhs.pos[3]; }};
-		struct state_hash {
-			size_t operator()(const state& s) const {
-				return   std::hash<cvec2>()(s.pos[0])
-					   ^ std::hash<cvec2>()(s.pos[1])
-					   ^ std::hash<cvec2>()(s.pos[2])
-					   ^ std::hash<cvec2>()(s.pos[3])
-					   ^ std::hash<int>()(s.keys); }};
-		state init{
-			{ { home+NSWE[0]+NSWE[2],
-				home+NSWE[0]+NSWE[3],
-				home+NSWE[1]+NSWE[2],
-				home+NSWE[1]+NSWE[3] } },
-			0 };
-		auto queue = deque<pair<state, int>>{};
-		queue.emplace_back(init, 0);
-		auto visited = uset<state, state_hash>{};
-		array<vector<cvec2>, 4> outBufs{};
-		while (!queue.empty()) {
-			auto [state, dist] = queue.front();  queue.pop_front();
-			if (visited.find(state) != end(visited)) continue;
-			visited.insert(state);
-			// cerr << "." << flush;
-			// gather keys, if any
-			for (int i{0}; i<NB; ++i) {
-				state.keys |= deKey(cell(state.pos[i])); }
-			// check target
-			if (state.keys == allKeys) {
-				p2 = dist;
-				break; }
-			// movements
-			for (int i{0}; i<NB; ++i) {
-				outLinks(state.pos[i], state.keys, outBufs[i]);
-				if (outBufs[i].empty()) { outBufs[i].push_back(state.pos[i]); }
-				/*cerr << "OL #" << i << " now: " << state.pos[i] << ", next [";
-				bool first{true};
-				for (const auto& item : outBufs[i]) {
-					if (first) {
-						first = false;}
-					else {
-						cerr << ", "; }
-					cerr << item; }
-				cerr << "]\n";*/
-				}
-			for (int xa=0; xa<outBufs[0].size(); xa++) {
-			for (int xb=0; xb<outBufs[1].size(); xb++) {
-			for (int xc=0; xc<outBufs[2].size(); xc++) {
-			for (int xd=0; xd<outBufs[3].size(); xd++) {
-				auto ns = state;
-				ns.pos[0] = outBufs[0][xa];
-				ns.pos[1] = outBufs[1][xb];
-				ns.pos[2] = outBufs[2][xc];
-				ns.pos[3] = outBufs[3][xd];
-				// cerr << "c" << flush;
-				if (visited.find(ns) == end(visited)) {
-					// cerr << "q" << flush;
-					queue.emplace_back(ns, dist+1); }}}}}}}
-
-	if (p2) {
-		cout << "p2: " << p2.value() << nl; }
-	else {
-		cerr << "p2 not found" << endl;
-		exit(1); }
+	CloseQuads();
+	int p2 = BT(botCoords);
+	cout << "p2: " << p2 << nl;
 	return 0; }
