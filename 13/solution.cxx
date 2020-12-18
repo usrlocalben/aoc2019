@@ -11,7 +11,7 @@ class IntCodeMachine {
 	int pc_{0}, bp_{0};
 	int opcode_, mode_[4];
 	optional<int64_t> lastOut_{};
-	optional<int64_t> lastIn_{};
+	deque<int64_t> inq_{};
 	State state_{State::Normal};
 
 public:
@@ -28,7 +28,11 @@ private:
 
 public:
 	void Recv(int64_t x) {
-		lastIn_ = x; }
+		inq_.push_back(x); }
+
+	void Recv(string s) {
+		for (auto ch : s) {
+			inq_.push_back(ch); }}
 
 	auto IsHalted() const -> bool {
 		return state_ == State::Halted; }
@@ -85,14 +89,15 @@ public:
 				pc_ += 4; }
 				break;
 			case 3 : 
-				if (!lastIn_) {
+				if (inq_.empty()) {
 					state_ = State::Input;
 					return; }
 				else {
 					auto a = LoadAddr(1);
-					Store(a, lastIn_.value());
+					int64_t v = inq_.front(); inq_.pop_front();
+					// cerr << "<S:" << (char)v << ">" << flush;
+					Store(a, v);
 					state_ = State::Normal;
-					lastIn_.reset();
 					pc_ += 2; }
 				break;
 			case 4 : {
