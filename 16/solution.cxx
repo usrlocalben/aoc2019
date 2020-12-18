@@ -1,22 +1,5 @@
-#include <algorithm>
-#include <array>
-#include <cassert>
-#include <deque>
-#include <iostream>
-#include <numeric>
-#include <optional>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
-
-#define uset unordered_set
-#define umap unordered_map
-using vi = std::vector<int>;
+#include "../lib.hpp"
 using namespace std;
-const std::string nl{"\n"};
-constexpr int oo{0x3f3f3f3f};
 
 constexpr array<int, 4> pat = {{ 0, 1, 0, -1 }};
 
@@ -66,8 +49,8 @@ struct PatternGen2 {
 	 
 
 int main() {
-	std::string tmp;
-	getline(std::cin, tmp);
+	string tmp;
+	getline(cin, tmp);
 
 	vector<char> ba, bb;
 	ba.resize(tmp.size());
@@ -83,7 +66,6 @@ int main() {
 
 	PatternGen pgen;
 	for (int p=0; p<100; ++p) {
-		cout << "." << flush;
 		for (int x{0}; x<baseSize; ++x) {
 			pgen.Begin(x);
 			int ax{0};
@@ -92,52 +74,40 @@ int main() {
 			dst[x] = abs(ax)%10; }
 		swap(src, dst); }
 
-	cout << "p1: ";
 	for (int i{0}; i<8; ++i) {
 		cout << char(src[i]+'0'); }
 	cout << endl;
 
-				
-	vector<char> ca, cb;
-	ca.reserve(baseSize*10000);
-	cb.reserve(baseSize*10000);
-	{for (const auto ch : tmp) {
-		ca.push_back(ch - '0'); }}
-	for (int i=0; i<10000; ++i) {
-		cb.insert(end(cb), begin(ca), end(ca)); }
-	ca = cb;
 
-	src = ca.data();
-	dst = cb.data();
+	auto at = [&](int idx) -> char {
+		return tmp[idx%650]-'0'; };
 
-	PatternGen2 pg2;
+	int start = stoi(tmp.substr(0, 7));
+	int rlen = 650*10000;
+	int wlen = rlen - start;
+	vector<char> ca(wlen, 0);
+	vector<char> cb(wlen, 0);
+	int64_t ax=0;
+	for (int i=start; i<rlen; ++i) {
+		ax += at(i);
+		ca[i-start] = at(i); }
 
-	for (int p=0; p<100; ++p) {
-		cerr << "." << flush;
-		for (int x{0}, siz=ca.size(); x<siz; ++x) {
-		// for (int x=ca.size()-1, siz=ca.size(); x>=0; --x) {
-			if (x%1000==0)
-			cerr << x << "." << flush;
+	auto ones = [](int64_t x) -> int {
+		auto m = x % 10;
+		return m<0?m+x:m; };
 
-			pg2.Begin(x);
-			int ax{0}, y{0};
-			while (y<siz) {
-				auto [n, rep] = pg2.Next();
-				rep = min(rep, siz-y);
-				if (n == 0) {
-					y+=rep; }
-				else {
-					while (rep--) ax += n*src[y++]; }
-				/*else if (n == 1) {
-					while (rep--) ax += src[y++]; }
-				else if (n ==-1) {
-					while (rep--) ax -= src[y++]; }*/
-			}
+	for (int n=0; n<100; ++n) {
+		int64_t nax=0;
+		for (int i=0; i<wlen; ++i) {
+			int num = ones(ax);
+			cb[i] = num;
+			nax += num;
+			ax -= ca[i]; }
+		swap(ca,cb);
+		ax = nax;
+		nax=0;}
 
-			cout << ax << "\n";
-			int final = abs(ax)%10;
-			// cout << char(final+'0');
-			dst[x] = final; }
-		swap(src, dst); }
-
+	for (int n=0; n<8; ++n) {
+		cout << int(ca[n]); }
+	cout << nl;
 	return 0; }

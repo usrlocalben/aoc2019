@@ -1,48 +1,17 @@
-#include <algorithm>
-#include <iostream>
-#include <numeric>
-#include <utility>
-#include <vector>
-
-using vi = std::vector<int>;
+#include "../lib.hpp"
 using namespace std;
-
-std::vector<std::string> Split(const std::string& str, char ch) {
-	std::vector<std::string> items;
-	std::string src(str);
-	auto nextmatch = src.find(ch);
-	while (true) {
-		auto item = src.substr(0, nextmatch);
-		items.push_back(item);
-		if (nextmatch == std::string::npos) { break; }
-		src = src.substr(nextmatch + 1);
-		nextmatch = src.find(ch); }
-	return items; }
-
-
-std::vector<int> SplitNums(const std::string& str, char ch=',') {
-	std::vector<int> items;
-	std::string src(str);
-	auto nextmatch = src.find(ch);
-	while (true) {
-		auto item = src.substr(0, nextmatch);
-		items.push_back(stoi(item));
-		if (nextmatch == std::string::npos) { break; }
-		src = src.substr(nextmatch + 1);
-		nextmatch = src.find(ch); }
-	return items; }
-
 
 class IntCodeMachine {
 	
-	std::vector<int> mem_;
+	vector<int64_t> mem_;
 	int pc_{0};
 	int opcode_, mode_[3];
-	std::vector<int> args_;
+	vi args_;
 	int ai_{0};
+	vi results_{};
 
 public:
-	IntCodeMachine(std::vector<int> m) :
+	IntCodeMachine(vector<int64_t> m) :
 		mem_(m) {}
 
 private:
@@ -56,6 +25,9 @@ private:
 public:
 	void Arg(int x) {
 		args_.push_back(x); }
+
+	auto Result() const -> int {
+		return results_.back(); }
 
 	void Run() {
 		bool halted{false};
@@ -79,14 +51,15 @@ public:
 			case 3 : {
 				int a = Load(pc_+1);
 				if (ai_ >= args_.size()) {
-					std::cerr << "premature end of args\n";
-					std::exit(1); }
+					cerr << "premature end of args\n";
+					exit(1); }
 				Store(a, args_[ai_++]);
 				pc_ += 2; }
 				break;
 			case 4 : {
 				int a = Load(pc_+1);  if (mode_[0] == 0) a = Load(a);
-				std::cout << "VM: " << a << "\n";
+				results_.push_back(a);
+				// cerr << "VM: " << a << "\n";
 				pc_ += 2; }
 				break;
 			case 5 :
@@ -112,8 +85,8 @@ public:
 				halted = true;
 				break;
 			default :
-				std::cerr << "unknown opcode " << opcode_ << "\n";
-				std::exit(1); }}}
+				cerr << "unknown opcode " << opcode_ << "\n";
+				exit(1); }}}
 
 	auto Load(int idx) const -> int {
 		if (0 <= idx && idx <= mem_.size()) {
@@ -123,8 +96,8 @@ public:
 
 	void Store(int idx, int value) {
 		if (idx < 0) {
-			std::cerr << "attempted to store @ " << idx << "\n";
-			std::exit(1); }
+			cerr << "attempted to store @ " << idx << "\n";
+			exit(1); }
 		if (idx >= mem_.size()) {
 			mem_.resize(idx+1, 0); }
 		mem_[idx] = value; }};
@@ -132,19 +105,18 @@ public:
 
 
 int main() {
-	std::string tmp;
-	getline(std::cin, tmp);
-
+	string tmp;
+	getline(cin, tmp);
 	auto mem = SplitNums(tmp);
 
 	auto vm = IntCodeMachine(mem);
 	vm.Arg(1);
 	vm.Run();
+	cout << vm.Result() << nl;
 
-	// std::cout << "p1: " << vm.Load(0) << "\n";
-	//
 	vm = IntCodeMachine(mem);
 	vm.Arg(5);
 	vm.Run();
+	cout << vm.Result() << nl;
 
 	return 0; }

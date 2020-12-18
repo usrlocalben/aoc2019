@@ -1,13 +1,8 @@
-#include <algorithm>
-#include <iostream>
-#include <numeric>
-#include <utility>
-#include <vector>
-
+#include "../lib.hpp"
 using namespace std;
 
 int FuelCost(int m) {
-	return std::max(0, (m/3)-2); }
+	return max(0, (m/3)-2); }
 
 int FuelCostEx(int m) {
 	auto fuel = FuelCost(m);
@@ -20,6 +15,6 @@ int main() {
 	while (cin >> x) {
 		p1 += FuelCost(x);
 		p2 += FuelCostEx(x); }
-	std::cout << "p1: " << p1 << "\n";
-	std::cout << "p2: " << p2 << "\n";
+	cout << p1 << nl;
+	cout << p2 << nl;
 	return 0; }

@@ -1,40 +1,5 @@
-#include <algorithm>
-#include <array>
-#include <iostream>
-#include <numeric>
-#include <optional>
-#include <utility>
-#include <vector>
-
-using vi = std::vector<int>;
+#include "../lib.hpp"
 using namespace std;
-const std::string nl{"\n"};
-
-std::vector<std::string> Split(const std::string& str, char ch) {
-	std::vector<std::string> items;
-	std::string src(str);
-	auto nextmatch = src.find(ch);
-	while (true) {
-		auto item = src.substr(0, nextmatch);
-		items.push_back(item);
-		if (nextmatch == std::string::npos) { break; }
-		src = src.substr(nextmatch + 1);
-		nextmatch = src.find(ch); }
-	return items; }
-
-
-std::vector<int> SplitNums(const std::string& str, char ch=',') {
-	std::vector<int> items;
-	std::string src(str);
-	auto nextmatch = src.find(ch);
-	while (true) {
-		auto item = src.substr(0, nextmatch);
-		items.push_back(stoi(item));
-		if (nextmatch == std::string::npos) { break; }
-		src = src.substr(nextmatch + 1);
-		nextmatch = src.find(ch); }
-	return items; }
-
 
 class IntCodeMachine {
 	enum State {
@@ -42,7 +7,7 @@ class IntCodeMachine {
 		Halted,
 		Input };
 	
-	std::vector<int64_t> mem_;
+	vector<int64_t> mem_;
 	int pc_{0}, bp_{0};
 	int opcode_, mode_[4];
 	optional<int64_t> lastOut_{};
@@ -82,7 +47,7 @@ public:
 			v = Load(v+bp_); }
 		else {
 			cerr << "invalid opcode param mode " << mode_[n] << "!";
-			std::exit(1); }
+			exit(1); }
 		return v; }
 
 	auto LoadAddr(int n) -> int {
@@ -92,12 +57,12 @@ public:
 			}
 		else if (mode_[n] == 1) {
 			cerr << "invalid mode for LoadAddr";
-			std::exit(1); }
+			exit(1); }
 		else if (mode_[n] == 2) {
 			v += bp_; }
 		else {
 			cerr << "invalid opcode param mode " << mode_[n] << "!";
-			std::exit(1); }
+			exit(1); }
 		return v; }
 
 	void Run() {
@@ -163,10 +128,10 @@ public:
 				state_ = State::Halted;
 				return;
 			default :
-				std::cerr << "unknown opcode " << opcode_ << " (pc=" << pc_ << ")\n";
-				std::exit(1); }}}
+				cerr << "unknown opcode " << opcode_ << " (pc=" << pc_ << ")\n";
+				exit(1); }}}
 
-	auto Load(auto idx) const -> int64_t {
+	auto Load(int idx) const -> int64_t {
 		if (0 <= idx && idx <= mem_.size()) {
 			return mem_[idx]; }
 		else {
@@ -174,8 +139,8 @@ public:
 
 	void Store(int idx, int64_t value) {
 		if (idx < 0) {
-			std::cerr << "attempted to store @ " << idx << "\n";
-			std::exit(1); }
+			cerr << "attempted to store @ " << idx << "\n";
+			exit(1); }
 		if (idx >= mem_.size()) {
 			mem_.resize(idx+1, 0); }
 		mem_[idx] = value; }
@@ -191,35 +156,35 @@ public:
 
 
 int main() {
-	std::string tmp;
-	getline(std::cin, tmp);
+	string tmp;
+	getline(cin, tmp);
 
 	auto mem = SplitNums(tmp);
-	auto mem64 = std::vector<int64_t>{};
+	auto mem64 = vector<int64_t>{};
 	mem64.reserve(mem.size());
 	for (auto n : mem) {
 		mem64.emplace_back(n); }
 
 	auto vm = IntCodeMachine(mem64);
 	vm.Recv(1);
+	int64_t p1;
 	while (1) {
 		vm.Run();
 		if (vm.HasOutput()) {
-			cerr << "<vm> " << vm.Out() << nl; }
+			p1 = vm.Out(); }
 		if (vm.IsHalted()) {
 			break; }}
+	cout << p1 << nl;
 
 
 	vm = IntCodeMachine(mem64);
 	vm.Recv(2);
+	int64_t p2;
 	while (1) {
 		vm.Run();
 		if (vm.HasOutput()) {
-			cerr << "<vm> " << vm.Out() << nl; }
+			p2 = vm.Out(); }
 		if (vm.IsHalted()) {
 			break; }}
-
-	// cout << "p2: " << p2 << nl;
-
-
+	cout << p2 << nl;
 	return 0; }

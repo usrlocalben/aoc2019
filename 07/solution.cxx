@@ -1,48 +1,13 @@
-#include <algorithm>
-#include <array>
-#include <iostream>
-#include <numeric>
-#include <optional>
-#include <utility>
-#include <vector>
-
-using vi = std::vector<int>;
+#include "../lib.hpp"
 using namespace std;
-const std::string nl{"\n"};
-
-std::vector<std::string> Split(const std::string& str, char ch) {
-	std::vector<std::string> items;
-	std::string src(str);
-	auto nextmatch = src.find(ch);
-	while (true) {
-		auto item = src.substr(0, nextmatch);
-		items.push_back(item);
-		if (nextmatch == std::string::npos) { break; }
-		src = src.substr(nextmatch + 1);
-		nextmatch = src.find(ch); }
-	return items; }
-
-
-std::vector<int> SplitNums(const std::string& str, char ch=',') {
-	std::vector<int> items;
-	std::string src(str);
-	auto nextmatch = src.find(ch);
-	while (true) {
-		auto item = src.substr(0, nextmatch);
-		items.push_back(stoi(item));
-		if (nextmatch == std::string::npos) { break; }
-		src = src.substr(nextmatch + 1);
-		nextmatch = src.find(ch); }
-	return items; }
-
 
 class IntCodeMachine {
 	enum State {
 		Normal=0,
 		Halted,
 		Input };
-	
-	std::vector<int> mem_;
+
+	vector<int64_t> mem_;
 	int pc_{0};
 	int opcode_, mode_[3];
 	int lastOut_;
@@ -50,7 +15,7 @@ class IntCodeMachine {
 	State state_{State::Normal};
 
 public:
-	IntCodeMachine(std::vector<int> m) :
+	IntCodeMachine(vector<int64_t> m) :
 		mem_(m) {}
 
 private:
@@ -127,8 +92,8 @@ public:
 				state_ = State::Halted;
 				return;
 			default :
-				std::cerr << "unknown opcode " << opcode_ << "\n";
-				std::exit(1); }}}
+				cerr << "unknown opcode " << opcode_ << "\n";
+				exit(1); }}}
 
 	auto Load(int idx) const -> int {
 		if (0 <= idx && idx <= mem_.size()) {
@@ -138,8 +103,8 @@ public:
 
 	void Store(int idx, int value) {
 		if (idx < 0) {
-			std::cerr << "attempted to store @ " << idx << "\n";
-			std::exit(1); }
+			cerr << "attempted to store @ " << idx << "\n";
+			exit(1); }
 		if (idx >= mem_.size()) {
 			mem_.resize(idx+1, 0); }
 		mem_[idx] = value; }
@@ -150,9 +115,8 @@ public:
 
 
 int main() {
-	std::string tmp;
-	getline(std::cin, tmp);
-
+	string tmp;
+	getline(cin, tmp);
 	auto mem = SplitNums(tmp);
 
 	auto Foo = [&](int phase, int input) {
@@ -177,7 +141,7 @@ int main() {
 		p1 = std::max(p1, amt); }
 	while (next_permutation(begin(phases), end(phases)));
 
-	cout << "p1: " << p1 << nl;
+	cout << p1 << nl;
 
 
 
@@ -199,11 +163,9 @@ int main() {
 			vm2.Run(); if (vm2.IsHalted()) break; vm2.Recv(x);  vm2.Run();  x = vm2.Out();
 			vm3.Run(); if (vm3.IsHalted()) break; vm3.Recv(x);  vm3.Run();  x = vm3.Out();
 			vm4.Run(); if (vm4.IsHalted()) break; vm4.Recv(x);  vm4.Run();  x = vm4.Out();
-			cout << "pass #" << passes << " " << x << endl; }
-		p2 = std::max(p2, x); }
+			/*cerr << "pass #" << passes << " " << x << endl;*/ }
+		p2 = max(p2, x); }
 	while (next_permutation(begin(phases), end(phases)));
 
-	cout << "p2: " << p2 << nl;
-
-
+	cout << p2 << nl;
 	return 0; }

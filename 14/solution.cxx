@@ -1,112 +1,5 @@
-#include <algorithm>
-#include <array>
-#include <deque>
-#include <iostream>
-#include <numeric>
-#include <optional>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
-
-#define uset unordered_set
-#define umap unordered_map
-using vi = std::vector<int>;
+#include "../lib.hpp"
 using namespace std;
-const std::string nl{"\n"};
-constexpr int oo{0x3f3f3f3f};
-
-std::vector<std::string> Split(const std::string& str, char ch) {
-	std::vector<std::string> items;
-	std::string src(str);
-	auto nextmatch = src.find(ch);
-	while (true) {
-		auto item = src.substr(0, nextmatch);
-		items.push_back(item);
-		if (nextmatch == std::string::npos) { break; }
-		src = src.substr(nextmatch + 1);
-		nextmatch = src.find(ch); }
-	return items; }
-
-std::vector<std::string> Split(std::string text, const std::string& delim) {
-	std::vector<std::string> items;
-	auto nextmatch = text.find(delim);
-	while (true) {
-		auto item = text.substr(0, nextmatch);
-		items.push_back(item);
-		if (nextmatch == std::string::npos) { break; }
-		text = text.substr(nextmatch + delim.size());
-		nextmatch = text.find(delim); }
-	return items; }
-
-
-std::vector<int64_t> SplitNums(const std::string& str, char ch=',') {
-	std::vector<int64_t> items;
-	std::string src(str);
-	auto nextmatch = src.find(ch);
-	while (true) {
-		auto item = src.substr(0, nextmatch);
-		items.push_back(stol(item));
-		if (nextmatch == std::string::npos) { break; }
-		src = src.substr(nextmatch + 1);
-		nextmatch = src.find(ch); }
-	return items; }
-
-struct ivec2 {
-	int x, y;
-	ivec2() = default;
-	constexpr explicit ivec2(int x_) :
-		x(x_), y(x_){}
-	constexpr ivec2(int x_, int y_) :
-		x(x_), y(y_) {}
-	auto operator+=(const ivec2& other) -> ivec2& { x+=other.x; y+=other.y; return *this; }
-	auto operator-=(const ivec2& other) -> ivec2& { x-=other.x; y-=other.y; return *this; }
-	auto operator*=(const ivec2& other) -> ivec2& { x*=other.x; y*=other.y; return *this; } };
-
-auto operator+(const ivec2& a, const ivec2& b) -> ivec2 { auto tmp = a; tmp += b; return tmp; }
-auto operator-(const ivec2& a, const ivec2& b) -> ivec2 { auto tmp = a; tmp -= b; return tmp; }
-auto operator*(const ivec2& a, const ivec2& b) -> ivec2 { auto tmp = a; tmp *= b; return tmp; }
-auto operator+(const ivec2& a, int& b) -> ivec2 { auto tmp = a; tmp += ivec2{b,b}; return tmp; }
-auto operator*(const ivec2& a, int& b) -> ivec2 { auto tmp = a; tmp *= ivec2{b,b}; return tmp; }
-auto operator-(const ivec2& a) -> ivec2 { return ivec2{ -a.x, -a.y }; }
-auto operator==(const ivec2& a, const ivec2& b) -> bool { return a.x==b.x && a.y==b.y; }
-auto operator!=(const ivec2& a, const ivec2& b) -> bool { return a.x!=b.x || a.y!=b.y; }
-
-
-auto abs(ivec2 a) -> ivec2 { return ivec2{ std::abs(a.x), std::abs(a.y) }; }
-auto hadd(ivec2 a) -> int { return a.x + a.y; }
-auto mdist(ivec2 a, ivec2 b) -> int { return hadd(abs(a - b)); }
-auto vmax(ivec2 a, ivec2 b) -> ivec2 { return ivec2{ std::max(a.x, b.x), std::max(a.y, b.y) }; }
-auto vmin(ivec2 a, ivec2 b) -> ivec2 { return ivec2{ std::min(a.x, b.x), std::min(a.y, b.y) }; }
-auto area(ivec2 a) -> int64_t { return a.x*a.y; }
-
-auto operator<<(ostream& s, const ivec2& i) -> ostream& { return s << "(" << i.x << "," << i.y << ")"; }
-
-namespace std {
-	template <>
-	struct hash<ivec2> {
-		auto operator()(const ivec2& a) const -> std::size_t {
-			return hash<int>()(a.x) ^ hash<int>()(a.y); }};}
-
-auto LRUD(char ch) -> ivec2 {
-	switch (ch) {
-	case 'L': return ivec2{ -1, 0 };
-	case 'R': return ivec2{  1, 0 };
-	case 'U': return ivec2{  0,-1 };
-	case 'D': return ivec2{  0, 1 }; }
-	std::cerr << "wtf?" << std::endl;
-	std::exit(1); }
-
-
-
-// dir=1 = counter-clockwise
-// dir=-1 = clockwise
-auto rot90(ivec2 p, int t) -> ivec2 {
-	return { -p.y*t, p.x*t };}
-
-auto botrot(ivec2 dir, int value) -> ivec2 {
-	return rot90(dir, value==0?1:-1); }
-
 
 int seq{0};
 umap<string, int> nameId;
@@ -146,7 +39,7 @@ auto operator<<(ostream& s, Recipe r) -> ostream& {
 	s << "], out=" << Batch{ r.yield, r.sku } << ">";
 	return s; }
 
-std::vector<Recipe> recipes;
+vector<Recipe> recipes;
 
 uset<int> visited;
 void FillIndegree(int n, int d=0) {
@@ -185,15 +78,10 @@ public:
 		return upper_-lower_ <= 1; } };
 
 
-
-
-
-
-
 int main() {
-	std::string tmp;
-	std::vector<Recipe> rax;
-	while (getline(std::cin, tmp)) {
+	string tmp;
+	vector<Recipe> rax;
+	while (getline(cin, tmp)) {
 		auto delim = string{" => "};
 		auto pos = tmp.find(delim);
 		auto left = tmp.substr(0, pos);
@@ -208,10 +96,11 @@ int main() {
 			b.sku = UpsertName(numname[1]);
 			return b; };
 
-		auto r = std::accumulate(begin(segs), end(segs), Recipe{}, [&](auto ax, auto cur) {
-								 auto b = deserializeBatch(cur);
-								 ax.in[b.sku] = b.qty;
-								 return ax; });
+		auto r = accumulate(ALL(segs), Recipe{},
+		                    [&](auto ax, auto cur) {
+		                        auto b = deserializeBatch(cur);
+		                        ax.in[b.sku] = b.qty;
+		                        return ax; });
 
 		auto b = deserializeBatch(right);
 		r.sku = b.sku;
@@ -232,11 +121,10 @@ int main() {
 
 	const int SKU_FUEL = nameId["FUEL"];
 
-
 	/*for (const auto& r : recipes) {
 		cout << r.indegree << ": " << r << nl; }*/
 
-	std::deque<int> queue;
+	deque<int> queue;
 	auto FuelCostInOre = [&](int64_t wanted) {
 		for (auto& r : recipes) {
 			r.indegree = 0;
@@ -265,7 +153,7 @@ int main() {
 		return recipes[nameId["ORE"]].needed; };
 
 	auto p1 = FuelCostInOre(1);
-	cout << "p1: " << p1 << nl;
+	cout << p1 << nl;
 
 
 	Bisector bisector{ 10000000, 1000000000000 };
@@ -274,11 +162,5 @@ int main() {
 		auto ore = FuelCostInOre(x);
 		bisector.Result(ore); }
 
-	cout << "p2: " << bisector.Pos() << nl;
-
-	/*for (const auto& r : recipes) {
-		cout << r.indegree << " " << r.needed << " " << r << nl; }*/
-
-
-
+	cout << bisector.Pos() << nl;
 	return 0; }

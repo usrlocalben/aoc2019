@@ -1,32 +1,5 @@
-#include <algorithm>
-#include <cmath>
-#include <deque>
-#include <functional>
-#include <iostream>
-#include <numeric>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
-
-#define umap unordered_map
-#define uset unordered_set
-using vi = std::vector<int>;
+#include "../lib.hpp"
 using namespace std;
-const std::string nl{"\n"};
-constexpr int INF{0x3f3f3f3f};
-using pii = std::pair<int, int>;
-constexpr auto kPi = 3.14169265359F;
-
-struct pair_hash {
-	template <class T1, class T2>
-	size_t operator()(const pair<T1, T2>& p) const {
-		return std::hash<T1>()(p.first) ^ std::hash<T2>()(p.second); } };
-
-auto signsep(int x) -> pii {
-	if (x < 0) {
-		return { -x, -1 }; }
-	return { x, 1 }; }
 
 auto vec2deg(int dx, int dy) -> float {
 	if (dx == 0) {
@@ -93,7 +66,7 @@ int main() {
 					bestX = cx;
 					bestY = cy; }}}}
 
-	cout << "p1: " << p1 << nl;
+	cout << p1 << nl;
 
 	/*
 	for (int y=0; y<10; ++y) {
@@ -109,18 +82,19 @@ int main() {
 	map[bestY][bestX] = 'B';
 
 	int n{0};
-	std::vector<hit> hits2;
-	while (1) {
+	vector<hit> hits2;
+	int p2{-1};
+	while (p2==-1) {
 		probe(bestX, bestY);
 		if (hits.empty()) {
-			cout << "no more hits?\n";
-			std::exit(1); }
+			cerr << "no more hits?\n";
+			exit(1); }
 
 		hits2.clear();
 		for (const auto& item : hits) {
 			hits2.push_back(item.second); }
 
-		sort(begin(hits2), end(hits2), [=](auto a, auto b) {
+		sort(ALL(hits2), [=](auto a, auto b) {
 			 return vec2deg(a.x-bestX, a.y-bestY) < vec2deg(b.x-bestX, b.y-bestY); });
 		for (const auto& hit : hits2) {
 			++n;
@@ -133,8 +107,8 @@ int main() {
 	cout << "-------------------------------\n";*/
 
 			if (n == 200) {
-				std::cout << "p2: " << (hit.x*100+hit.y) << "\n";
-				std::exit(0); }}}
+				p2 = hit.x*100+hit.y;
+				break; }}}
 
-	std::cout << "hmm?\n";
+	cout << p2 << nl;
 	return 0; }

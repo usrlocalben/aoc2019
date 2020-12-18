@@ -1,23 +1,9 @@
-#include <algorithm>
-#include <array>
-#include <cassert>
-#include <iostream>
-#include <numeric>
-#include <optional>
-#include <utility>
-#include <vector>
-#include <unordered_set>
-
-#define uset unordered_set
-using vi = std::vector<int>;
+#include "../lib.hpp"
 using namespace std;
-const std::string nl{"\n"};
-constexpr int oo{0x3f3f3f3f};
-
 
 int main() {
-	std::string tmp;
-	getline(std::cin, tmp);
+	string tmp;
+	getline(cin, tmp);
 
 	auto len = tmp.size();
 	constexpr int w = 25;
@@ -33,7 +19,7 @@ int main() {
 		uniq.insert(ch); }
 	for (auto ch : uniq) {
 		cout << "ch(" << ch << ")"; }
-	std::exit(0);
+	exit(0);
 	*/
 
 	int bestLayer{-1};
@@ -54,11 +40,11 @@ int main() {
 		auto ch = region[i];
 		cnts[ch-'0']++; }
 	int p1{ cnts[1] * cnts[2] };
-	cout << "p1: " << p1 << nl;
+	cout << p1 << nl;
 	
 
 	auto buf = array<char, w*h>{};
-	std::fill(begin(buf), end(buf), '2');
+	fill(ALL(buf), '2');
 	for (int li=0; li<layers; ++li) {
 		auto region = tmp.data() + area*li;
 		for (int i=0; i<area; ++i) {
@@ -68,9 +54,5 @@ int main() {
 		for (int x=0; x<w; ++x) {
 			cout << (buf[y*w+x]=='1'?'#':' '); }
 		cout << "\n"; }
-
-
-	// cout << "p2: " << p2 << nl;
-
 
 	return 0; }

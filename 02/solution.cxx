@@ -1,45 +1,13 @@
-#include <algorithm>
-#include <iostream>
-#include <numeric>
-#include <utility>
-#include <vector>
-
-using vi = std::vector<int>;
+#include "../lib.hpp"
 using namespace std;
-
-std::vector<std::string> Split(const std::string& str, char ch) {
-	std::vector<std::string> items;
-	std::string src(str);
-	auto nextmatch = src.find(ch);
-	while (true) {
-		auto item = src.substr(0, nextmatch);
-		items.push_back(item);
-		if (nextmatch == std::string::npos) { break; }
-		src = src.substr(nextmatch + 1);
-		nextmatch = src.find(ch); }
-	return items; }
-
-
-std::vector<int> SplitNums(const std::string& str, char ch=',') {
-	std::vector<int> items;
-	std::string src(str);
-	auto nextmatch = src.find(ch);
-	while (true) {
-		auto item = src.substr(0, nextmatch);
-		items.push_back(stoi(item));
-		if (nextmatch == std::string::npos) { break; }
-		src = src.substr(nextmatch + 1);
-		nextmatch = src.find(ch); }
-	return items; }
-
 
 class IntCodeMachine {
 	
-	std::vector<int> mem_;
+	vector<int64_t> mem_;
 	int pc_{0};
 
 public:
-	IntCodeMachine(std::vector<int> m) :
+	IntCodeMachine(vector<int64_t> m) :
 		mem_(m) {}
 
 	void Run() {
@@ -63,8 +31,8 @@ public:
 				halted = true;
 				break;
 			default :
-				std::cerr << "unknown opcode " << op << "\n";
-				std::exit(1); }}}
+				cerr << "unknown opcode " << op << nl;
+				exit(1); }}}
 
 	auto Load(int idx) const -> int {
 		if (0 <= idx && idx <= mem_.size()) {
@@ -74,26 +42,23 @@ public:
 
 	void Store(int idx, int value) {
 		if (idx < 0) {
-			std::cerr << "attempted to store @ " << idx << "\n";
-			std::exit(1); }
+			cerr << "attempted to store @ " << idx << "\n";
+			exit(1); }
 		if (idx >= mem_.size()) {
 			mem_.resize(idx+1, 0); }
 		mem_[idx] = value; }};
 
 
-
 int main() {
-	std::string tmp;
-	getline(std::cin, tmp);
-
+	string tmp;
+	getline(cin, tmp);
 	auto mem = SplitNums(tmp);
 
 	auto vm = IntCodeMachine(mem);
 	vm.Store(1, 12);
 	vm.Store(2, 2);
 	vm.Run();
-	std::cout << "p1: " << vm.Load(0) << "\n";
-
+	cout << vm.Load(0) << nl;
 
 	for (int x=0; x<100; ++x) {
 		for (int y=0; y<100; ++y) {
@@ -103,6 +68,6 @@ int main() {
 			vm.Run();
 			auto ans = vm.Load(0);
 			if (ans == 19690720) {
-				std::cout << "p2: " << (x*100+y) << "\n"; }}}
+				cout << (x*100+y) << nl; }}}
 
 	return 0; }

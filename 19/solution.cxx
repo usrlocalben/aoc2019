@@ -11,7 +11,7 @@ class IntCodeMachine {
 	int pc_{0}, bp_{0};
 	int opcode_, mode_[4];
 	optional<int64_t> lastOut_{};
-	optional<int64_t> lastIn_{};
+	deque<int64_t> inq_{};
 	State state_{State::Normal};
 
 public:
@@ -28,7 +28,11 @@ private:
 
 public:
 	void Recv(int64_t x) {
-		lastIn_ = x; }
+		inq_.push_back(x); }
+
+	void Recv(string s) {
+		for (auto ch : s) {
+			inq_.push_back(ch); }}
 
 	auto IsHalted() const -> bool {
 		return state_ == State::Halted; }
@@ -85,14 +89,15 @@ public:
 				pc_ += 4; }
 				break;
 			case 3 : 
-				if (!lastIn_) {
+				if (inq_.empty()) {
 					state_ = State::Input;
 					return; }
 				else {
 					auto a = LoadAddr(1);
-					Store(a, lastIn_.value());
+					int64_t v = inq_.front(); inq_.pop_front();
+					// cerr << "<S:" << (char)v << ">" << flush;
+					Store(a, v);
 					state_ = State::Normal;
-					lastIn_.reset();
 					pc_ += 2; }
 				break;
 			case 4 : {
@@ -140,9 +145,6 @@ public:
 
 	auto Load(int idx) const -> int64_t {
 		if (0 <= idx && idx <= mem_.size()) {
-			if (idx == 392) {
-				// cerr << "read 392! replacing " << mem_[392] << " with " << mem_[388] << nl;
-				return mem_[388]; }
 			return mem_[idx]; }
 		else {
 			return 0; }}
@@ -164,97 +166,49 @@ public:
 		return v; } };
 
 
-int main() {
+int main(int argc, char**argv) {
 	string tmp;
 	getline(cin, tmp);
 
 	auto mem = SplitNums(tmp);
 
-	umap<Int2, char> map;
-	Int2 bMax{-oo,-oo };
+	// Int2 bMin{ 0, 0};
+	// Int2 bMax{ 0, 0};
 
-	auto vm = IntCodeMachine(mem);
-	while (1) {
+	vector<string> map;
+
+	auto InBeam = [&](Int2 coord) -> bool {
+		auto vm = IntCodeMachine(mem);
+		vm.Recv(coord.x);
+		vm.Recv(coord.y);
 		vm.Run();
-		if (vm.IsHalted()) {
-			// cerr << "<vm> halted" << nl;
-			break; }
+		return vm.Out() == 1; };
 
-		auto px = vm.Out();
-		vm.Run();
-		auto py = vm.Out();
-		vm.Run();
-		auto tileId = vm.Out();
+	int cnt{0};
+	for (int y=0; y<50; ++y) {
+		for (int x=0; x<50; ++x) {
+			const auto coord = Int2(x,y);
+			const auto in = InBeam(coord);
+			cerr << (in?'#':'.');
+			cnt += in; }
+		cerr << nl; }
 
-		auto pos = Int2(px, py);
-		bMax = vmax(bMax, pos);
-		map[pos] = tileId; }
-	auto bEnd = bMax + Int2{1,1};
+	cout << "p1: " << cnt << nl;
 
-	constexpr int T_EMPTY = 0;
-	constexpr int T_WALL = 1;
-	constexpr int T_BLOCK = 2;
-	constexpr int T_PADDLE = 3;
-	constexpr int T_BALL = 4;
+	// (923, 1141) found by probing manually
+	int p2{0};
+	for (int y=0; y<100; ++y) {
+		for (int x=0; x<100; ++x) {
+			const auto coord = Int2(x,y) + Int2(atoi(argv[1]), atoi(argv[2]));
+			const auto in = InBeam(coord);
+			p2 += in;
+			cerr << (in?'#':'.'); }
+		cerr << nl; }
 
-	int p1{0};
-	for (int y=0; y<bEnd.y; ++y) {
-		for (int x=0; x<bEnd.x; ++x) {
-			int tid;
-			if (auto found = map.find(Int2{ x, y }); found!=end(map)) {
-				tid = found->second; }
-			else {
-				tid = 0; }
-			//cerr << tid;
-			p1 += (tid==T_BLOCK); }
-		// cerr << "\n";
-		}
+	cout << "p2: " << p2 << nl;
 
-	cout << p1 << nl;
-
-	vm = IntCodeMachine(mem);
-	vm.Store(0, 2); // play for free
-	map.clear();
-	int score{0};
-	int frameId{0};
-	while (1) {
-		// cerr << "run...\n";
-		vm.Run();
-		if (vm.IsHalted()) {
-			// cerr << "<vm> halted" << nl;
-			break; }
-		if (vm.IsWaiting()) {
-			// cerr << "f#" << frameId << nl;
-
-			/*
-	for (int y=0; y<bEnd.y; ++y) {
-		for (int x=0; x<bEnd.x; ++x) {
-			int tid;
-			if (auto found = map.find(Int2{ x, y }); found!=end(map)) {
-				tid = found->second; }
-			else {
-				tid = 0; }
-			cerr << tid;}
-		cerr << "\n"; }*/
-
-			frameId++;
-			vm.Recv(1); // neutral input won't cause padle update
-			// map.clear();
-			continue;
-		}
-		int i0 = vm.Out(); vm.Run();
-		int i1 = vm.Out(); vm.Run();
-		int i2 = vm.Out();
-		if (i0==-1 && i1==0) {
-			//cerr << "score: " << i2 << nl;
-			score = i2; }
-		else {
-			map[Int2(i0, i1)] = i2; }}
-		//cerr << "[" << i0 << ", " << i1 << ", " << i2 << "]\n"; }
-
-
-	cout << score << nl;
-	// vm.DumpMemory();
-
+	/*for (int i=0; i<mem.size(); ++i) {
+		if (mem[i] != vm.Load(i)) {
+			cerr << "mem @ " << i << " orig=" << mem[i] << ", vm=" << vm.Load(i) << "\n"; }}*/
 
 	return 0; }

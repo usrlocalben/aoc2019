@@ -7,11 +7,11 @@ class IntCodeMachine {
 		Halted,
 		Input };
 	
-	vector<int64_t> mem_;
+	std::vector<int64_t> mem_;
 	int pc_{0}, bp_{0};
 	int opcode_, mode_[4];
 	optional<int64_t> lastOut_{};
-	optional<int64_t> lastIn_{};
+	deque<int64_t> inq_{};
 	State state_{State::Normal};
 
 public:
@@ -28,7 +28,11 @@ private:
 
 public:
 	void Recv(int64_t x) {
-		lastIn_ = x; }
+		inq_.push_back(x); }
+
+	void Recv(string s) {
+		for (auto ch : s) {
+			inq_.push_back(ch); }}
 
 	auto IsHalted() const -> bool {
 		return state_ == State::Halted; }
@@ -47,7 +51,7 @@ public:
 			v = Load(v+bp_); }
 		else {
 			cerr << "invalid opcode param mode " << mode_[n] << "!";
-			exit(1); }
+			std::exit(1); }
 		return v; }
 
 	auto LoadAddr(int n) -> int {
@@ -57,12 +61,12 @@ public:
 			}
 		else if (mode_[n] == 1) {
 			cerr << "invalid mode for LoadAddr";
-			exit(1); }
+			std::exit(1); }
 		else if (mode_[n] == 2) {
 			v += bp_; }
 		else {
 			cerr << "invalid opcode param mode " << mode_[n] << "!";
-			exit(1); }
+			std::exit(1); }
 		return v; }
 
 	void Run() {
@@ -85,14 +89,15 @@ public:
 				pc_ += 4; }
 				break;
 			case 3 : 
-				if (!lastIn_) {
+				if (inq_.empty()) {
 					state_ = State::Input;
 					return; }
 				else {
 					auto a = LoadAddr(1);
-					Store(a, lastIn_.value());
+					int64_t v = inq_.front(); inq_.pop_front();
+					// std::cerr << "<S:" << (char)v << ">" << flush;
+					Store(a, v);
 					state_ = State::Normal;
-					lastIn_.reset();
 					pc_ += 2; }
 				break;
 			case 4 : {
@@ -129,8 +134,8 @@ public:
 				state_ = State::Halted;
 				return;
 			default :
-				cerr << "unknown opcode " << opcode_ << " (pc=" << pc_ << ")\n";
-				exit(1); }}}
+				std::cerr << "unknown opcode " << opcode_ << " (pc=" << pc_ << ")\n";
+				std::exit(1); }}}
 
 	void DumpMemory() const {
 		cerr << "===== BEGIN MEMORY DUMP =====\n";
@@ -140,17 +145,14 @@ public:
 
 	auto Load(int idx) const -> int64_t {
 		if (0 <= idx && idx <= mem_.size()) {
-			if (idx == 392) {
-				// cerr << "read 392! replacing " << mem_[392] << " with " << mem_[388] << nl;
-				return mem_[388]; }
 			return mem_[idx]; }
 		else {
 			return 0; }}
 
 	void Store(int idx, int64_t value) {
 		if (idx < 0) {
-			cerr << "attempted to store @ " << idx << "\n";
-			exit(1); }
+			std::cerr << "attempted to store @ " << idx << "\n";
+			std::exit(1); }
 		if (idx >= mem_.size()) {
 			mem_.resize(idx+1, 0); }
 		mem_[idx] = value; }
@@ -163,98 +165,92 @@ public:
 		lastOut_.reset();
 		return v; } };
 
-
-int main() {
-	string tmp;
-	getline(cin, tmp);
-
+int main(int argc, char**argv) {
+	std::string tmp;
+	getline(std::cin, tmp);
 	auto mem = SplitNums(tmp);
 
-	umap<Int2, char> map;
-	Int2 bMax{-oo,-oo };
+/*
+part1
 
-	auto vm = IntCodeMachine(mem);
-	while (1) {
+jump +4
+
+#####.#########
+  @abcd
+#####.#..######
+
+#####...#######
+
+(!c)&&d || !a
+
+       ||
+   &       !
+ !  d       a
+c
+
+NOT C T
+AND D T
+NOT A J
+OR T J
+*/
+
+	bool showOutput{false};
+
+	int64_t part1 = -1;
+	{auto vm = IntCodeMachine(mem);
+	string scode{"NOT C T\nAND D T\nNOT A J\nOR T J\nWALK\n"};
+	vm.Recv(scode);
+	while (!vm.IsHalted()) {
 		vm.Run();
-		if (vm.IsHalted()) {
-			// cerr << "<vm> halted" << nl;
-			break; }
-
-		auto px = vm.Out();
-		vm.Run();
-		auto py = vm.Out();
-		vm.Run();
-		auto tileId = vm.Out();
-
-		auto pos = Int2(px, py);
-		bMax = vmax(bMax, pos);
-		map[pos] = tileId; }
-	auto bEnd = bMax + Int2{1,1};
-
-	constexpr int T_EMPTY = 0;
-	constexpr int T_WALL = 1;
-	constexpr int T_BLOCK = 2;
-	constexpr int T_PADDLE = 3;
-	constexpr int T_BALL = 4;
-
-	int p1{0};
-	for (int y=0; y<bEnd.y; ++y) {
-		for (int x=0; x<bEnd.x; ++x) {
-			int tid;
-			if (auto found = map.find(Int2{ x, y }); found!=end(map)) {
-				tid = found->second; }
-			else {
-				tid = 0; }
-			//cerr << tid;
-			p1 += (tid==T_BLOCK); }
-		// cerr << "\n";
-		}
-
-	cout << p1 << nl;
-
-	vm = IntCodeMachine(mem);
-	vm.Store(0, 2); // play for free
-	map.clear();
-	int score{0};
-	int frameId{0};
-	while (1) {
-		// cerr << "run...\n";
-		vm.Run();
-		if (vm.IsHalted()) {
-			// cerr << "<vm> halted" << nl;
-			break; }
 		if (vm.IsWaiting()) {
-			// cerr << "f#" << frameId << nl;
-
-			/*
-	for (int y=0; y<bEnd.y; ++y) {
-		for (int x=0; x<bEnd.x; ++x) {
-			int tid;
-			if (auto found = map.find(Int2{ x, y }); found!=end(map)) {
-				tid = found->second; }
+			cerr << "unexpected wait for input" << nl;
+			exit(1); }
+		if (vm.HasOutput()) {
+			int64_t value = vm.Out();
+			if (value >= 128) {
+				part1 = value; }
 			else {
-				tid = 0; }
-			cerr << tid;}
-		cerr << "\n"; }*/
+				if (showOutput) {
+					cerr << static_cast<char>(value); }}}}}
+	cout << part1 << nl;
 
-			frameId++;
-			vm.Recv(1); // neutral input won't cause padle update
-			// map.clear();
-			continue;
-		}
-		int i0 = vm.Out(); vm.Run();
-		int i1 = vm.Out(); vm.Run();
-		int i2 = vm.Out();
-		if (i0==-1 && i1==0) {
-			//cerr << "score: " << i2 << nl;
-			score = i2; }
-		else {
-			map[Int2(i0, i1)] = i2; }}
-		//cerr << "[" << i0 << ", " << i1 << ", " << i2 << "]\n"; }
+/*
+part2
+    j   x   j
+#####.#.##.##.###
 
+#####.###..#..###
+*/
 
-	cout << score << nl;
-	// vm.DumpMemory();
+	int64_t part2 = -1;
+	{auto vm = IntCodeMachine(mem);
+	string scode{
+		"NOT A J\n"
+		"NOT B T\n"
+		"OR T J\n"
+		"NOT C T\n"
+		"OR T J\n"
+		"AND D J\n"
+		
+		"NOT E T\n"
+		"AND H T\n"
+		"OR E T\n"
 
+		"AND T J\n"
+		"RUN\n"};
+	vm.Recv(scode);
+	while (!vm.IsHalted()) {
+		vm.Run();
+		if (vm.IsWaiting()) {
+			cerr << "unexpected wait for input" << nl;
+			exit(1); }
+		if (vm.HasOutput()) {
+			int64_t value = vm.Out();
+			if (value >= 128) {
+				part2 = value; }
+			else {
+				if (showOutput) {
+					cerr << static_cast<char>(value); }}}}}
 
+	cout << part2 << nl;
 	return 0; }
